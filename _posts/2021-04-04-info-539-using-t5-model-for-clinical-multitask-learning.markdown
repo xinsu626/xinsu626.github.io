@@ -5,6 +5,13 @@ date:   2021-04-04 22:33:54 -0700
 categories: INFO 539
 ---
 
+To-dos:
+
+- [ ] Move the source file to official course git repo
+- [ ] Add docker file
+- [ ] check the rubric 
+- [ ] add data examples
+
 # Introduction
 
 This tutorial is my final project in INFO 539 Statistical Natural Language Processing at The University of Arizona. In this tutorial, we will use Pytorch library and Hugging Face Transformers library to fine-tune Text-to-Text Transfer Transformer (T5) models in the form of multi-task learning for clinical negation detection and clinical semantic textual similarity (STS) tasks. We will also investigate the different freezing strategies (freeze encoder or decoder during fine-tuning). 
