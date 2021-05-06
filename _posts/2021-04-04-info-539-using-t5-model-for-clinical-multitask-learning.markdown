@@ -4,16 +4,14 @@ title:  "INFO539: Using the T5 model for clinical multi-task learning"
 date:   2021-04-04 22:33:54 -0700
 categories: INFO 539
 ---
+* TOC
+{:toc}
 
 To-dos:
 
 - [ ] Move the source file to official course git repo
 - [ ] Add docker file
 - [ ] check the rubric 
-
-# Table of Content
-
-[TOC]
 
 # Introduction
 
