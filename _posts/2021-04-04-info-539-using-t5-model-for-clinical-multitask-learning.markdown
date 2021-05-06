@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "INFO539: Using the T5 model for clinical multitask learning"
+title:  "INFO539: Using the T5 model for clinical multi-task learning"
 date:   2021-04-04 22:33:54 -0700
 categories: INFO 539
 ---
@@ -10,7 +10,10 @@ To-dos:
 - [ ] Move the source file to official course git repo
 - [ ] Add docker file
 - [ ] check the rubric 
-- [ ] add data examples
+
+# Table of Content
+
+[TOC]
 
 # Introduction
 
@@ -24,9 +27,33 @@ The model we will build and train is the pre-trained T5 model from Raffel et al.
 
 ### Data and Tasks
 
-**Negation Detection**: Negation detection task is a subtask in [SemEval 2021 Task 10](https://machine-learning-for-medical-language.github.io/source-free-domain-adaptation/). The goal of the negation detection task is to predict whether the clinical event in a sentence is negated by its context. This is a binary sentence classification task. For example, given a clinical event *diarrhea* and the sentence *Has no `<e>`diarrhea`</e>` and no new lumps or masses*, the goal is to predict that *diarrhea* is negated by its context. For the T5 model, the input of this task is a sentence with the entity and the output is negated or not negated.
+**Negation Detection**: Negation detection task is a subtask in [SemEval 2021 Task 10](https://machine-learning-for-medical-language.github.io/source-free-domain-adaptation/). The goal of the negation detection task is to predict whether the clinical event in a sentence is negated by its context. This is a binary sentence classification task. For example, given a clinical event *diarrhea* and the sentence *Has no `<e>`diarrhea`</e>` and no new lumps or masses*, the goal is to predict that *diarrhea* is negated by its context. For the T5 model, the input of this task is a sentence with the entity and the output is negated or not negated. Below are some artificially generated data samples.
 
-**Clinical Semantic Textual Similarity (STS) Measurement**: Clinical STS is a subtask of [2019 n2c2 share task](https://n2c2.dbmi.hms.harvard.edu/track1). The goal of Clinical STS is to predict the semantic similarity score of a clinical sentence pair. The similarity score is a real number that takes values in the range 0 to 5. 0 means that the semantics of the two sentences are completely different. 5 means that the semantics of the two sentences are identical. This is a regression task. For the T5 model, the input of this task is a sentence pair and the output is a similarity score in string format.
+```
+# Sample 1
+Sentence: Has no <e>diarrhea</e> and new lumps or masses
+Label: -1 (not negated)
+
+# Sample 1
+Sentence: Has no diarrhea and no <e>new lumps or masses</e>
+Label: 1 (negated)
+```
+
+**Clinical Semantic Textual Similarity (STS) Measurement**: Clinical STS is a subtask of [2019 n2c2 share task](https://n2c2.dbmi.hms.harvard.edu/track1). The goal of Clinical STS is to predict the semantic similarity score of a clinical sentence pair. The similarity score is a real number that takes values in the range 0 to 5. 0 means that the semantics of the two sentences are completely different. 5 means that the semantics of the two sentences are identical. This is a regression task. For the T5 model, the input of this task is a sentence pair and the output is a similarity score in string format. Below are some artificially generated data samples.
+
+```
+# Sample 1
+Sentence 1: The patient feels headache and stomach pain.
+Sentence 2: The patient came in and said she felt a headache and stomach pain.
+Similarity Score: 4.5
+
+# Sample 2
+Sentence 1: Require the patient to take a vitamin D tablet every two days.
+Sentence 2: The patient feels headache and stomach pain.
+Similarity Score: 0
+```
+
+
 
 The data in both tasks are from the clinical institution's electronic medical record (EMR). They are all publicly available research data sets, but access to them requires approval and signing the data use agreements (UDA). They can be obtained through [DBMI Data Portal](https://portal.dbmi.hms.harvard.edu/) and their corresponding share tasks. For negation detection, we will use the development set in the share task data and divide it into a training set and a test set at a ratio of 80%:20%. For clinical STS, we will use the same data split as in share tasks. The models will be trained and tuned on the training set (the training set will be further split into a training set and a development set for each task), and tested on the test set to get the final performance. In the negation detection task, the F1 score will be used as the main evaluation metric. At the same time, precision and recall scores will also be reported. In clinical STS, Pearson correlation coefficient will be used as the main evaluation metric. The size and evaluation metrics of these two data sets are shown in the following table.
 
@@ -39,12 +66,13 @@ The data in both tasks are from the clinical institution's electronic medical re
 
 We will fine-tune the T5 models and experiment with the following freezing strategy.
 
-- First fine-tune the T5-base model for multi-task learning for both tasks, and then fine-tune the model for each task. In multi-task learning, freeze all **encoder** layers and only fine-tune **decoder** layers. In the fine-tuning for a single task, freeze all the **decoder** layers and only fine-tune the **encoder** layers. (It will produce two final models.)
-- First fine-tune the T5-base model for multi-task learning for both tasks, and then fine-tune the model for each task. In multi-task learning, freeze all **decoder** layers and only fine-tune **encoder** layers. In the fine-tuning for a single task, freeze all the **encoder** layers and only fine-tune the **decoder** layers. (It will produce two final models.)
-- First fine-tune the T5-base model for multi-task learning for both tasks, and then fine-tune the model for each task. In multi-task learning for both tasks and fine-tuning for a single task, the parameters of all layers of the model are fine-tuned. (It will produce two final models.)
-- Only perform multi-task learning for both tasks and do not fine-tune for a single task. (It will produce one final model.)
+- MT (freeze encoder) + FT (freeze decoder): First freeze encoder on two tasks for multi-task learning to fine tune the decoder. Then freeze the decoder and fine tune the encoder on two tasks separately.
+- MT (freeze decoder) + FT (freeze encoder): First freeze decoder on two tasks for multi-task learning to fine tune the encoder. Then freeze the encoder and fine tune the decoder on two tasks separately.
+- MT + FT: Perform multi-task learning on two tasks to fine-tune the entire model. Then fine-tune the entire model on both tasks separately.
+- MT only: Only perform multi-task learning for both tasks and do not fine-tune for a single task.
+- FT only (baseline models): We will compare the performance of the above four kinds of models with the performance of the T5 model, which is only fine-tuned for a single task without any multi-task learning. 
 
-We will compare the performance of the above four kinds of models with the performance of the T5 model, which is only fine-tuned for a single task without any multi-task learning. In total, we will train 9 models.
+In total, we will train 9 models.
 
 # Implementation and Experiments
 
@@ -80,6 +108,18 @@ We can install the Hugging Face Transformers library by using the following comm
 ```bash
 # Intsall the Huugingface Transformers library
 python3.8 -m pip install transformers==4.4.2
+```
+
+**Other Dependencies**
+
+You may also need the following dependencies in this tutorial.
+
+```bash
+# Install scikit-learn
+python3.8 -m pip install scikit_learn==0.24.2
+
+# Install sentencepiece for T5 tokenizer
+python3.8 -m pip install sentencepiece==0.1.95
 ```
 
 ### Project Structure
@@ -944,3 +984,65 @@ I summarized the results of training and testing the above model on my machine i
 | MT + FT                                    | 0.676               |
 
 As we can see, the best-performing strategy on both tasks is MT (freeze decoder) + FT (freeze encoder): first freeze the decoder for multi-task learning and fine-tune only the encoder, then freeze the encoder and fine-tune only the decoder on both tasks separately.
+
+# Using Containerized Code
+
+All the code in this tutorial is containerized by Docker (The tutorial for installing docker can be found [here](https://docs.docker.com/engine/install/ubuntu/)). To replicate the experiments, one can pull a docker image from the docker hub and train the model in the container by connecting to the docker's interactive session. Below I will provide an example of how to train the STS baseline model using this docker image. One can also reproduce other models based on this template.
+
+Since we will use GPUs to train the models, we first need to install the Nvidia docker toolkit so that we can use the GPUs on the host machine inside the container. This installation command is from [Nvidia](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#setting-up-nvidia-container-toolkit).
+
+```bash
+# Setup the stable repository and the GPG key
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+   
+# Install the nvidia-docker2 package (and dependencies) after updating the package listing
+sudo apt-get update
+sudo apt-get install -y nvidia-docker2
+
+# Restart the Docker daemon 
+sudo systemctl restart docker
+```
+
+We need to run the following command to pull the image from the docker hub.
+
+```bash
+docker pull xinsu1/teachnical-tutorial-xinsu626:latest
+```
+
+Now we will run the container interactively based on the image we just pulled. Also, we need to specify in the command the data directory we want to mount to the container and specify that we want to use all the GPUs on the host machine.
+
+```bash
+docker run -it --rm --gpus all -v /path/to/raw-data/directory/on/host:/technical-tutorial-xinsu626/raw-data xinsu1/teachnical-tutorial-xinsu626
+```
+
+Then we run the following command to train the baseline model of clinical STS in the container.
+
+```bash
+# Go to the source code
+cd src/experiments/
+
+# Set the PYTHONPATH
+export PYTHONPATH=/technical-tutorial-xinsu626:${PYTHONPATH}
+export PYTHONPATH=/technical-tutorial-xinsu626/src:${PYTHONPATH}
+export PYTHONPATH=/technical-tutorial-xinsu626/src/data:${PYTHONPATH}
+export PYTHONPATH=/technical-tutorial-xinsu626/src/experiments:${PYTHONPATH}
+
+# Train the model
+python3.8 /technical-tutorial-xinsu626/src/experiments/run_t5_model.py \
+--negation_train_corpus_path /technical-tutorial-xinsu626/raw-data/negation-data/train.tsv \
+--negation_train_label_path /technical-tutorial-xinsu626/raw-data/negation-data/train_labels.tsv \
+--negation_test_corpus_path /technical-tutorial-xinsu626/raw-data/negation-data/test.tsv \
+--negation_test_label_path /technical-tutorial-xinsu626/raw-data/negation-data/test_labels.tsv \
+--sts_train_corpus_path /technical-tutorial-xinsu626/raw-data/n2c2-2019-track1-data/clinicalSTS2019.train.txt \
+--sts_test_corpus_path /technical-tutorial-xinsu626/raw-data/n2c2-2019-track1-data/clinicalSTS2019.test.txt \
+--sts_test_label_path /technical-tutorial-xinsu626/raw-data/n2c2-2019-track1-data/clinicalSTS2019.test.gs.sim.txt \
+--output_path /technical-tutorial-xinsu626/sts-baseline \
+--model_name t5-base \
+--do_train True \
+--parts_to_freeze none \
+--tasks_to_train sts \
+--tasks_to_eval sts
+```
+
