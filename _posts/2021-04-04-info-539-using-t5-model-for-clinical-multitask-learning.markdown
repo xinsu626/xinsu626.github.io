@@ -10,18 +10,17 @@ categories: INFO 539
 To-dos:
 
 - [ ] Move the source file to official course git repo
-- [ ] Add docker file
 - [ ] check the rubric 
 
 # Introduction
 
-This tutorial is my final project in INFO 539 Statistical Natural Language Processing at The University of Arizona. In this tutorial, we will use Pytorch library and Hugging Face Transformers library to fine-tune Text-to-Text Transfer Transformer (T5) models in the form of multi-task learning for clinical negation detection and clinical semantic textual similarity (STS) tasks. We will also investigate the different freezing strategies (freeze encoder or decoder during fine-tuning). 
+This tutorial is my final project in INFO 539 Statistical Natural Language Processing at The University of Arizona. In this tutorial, we will use Pytorch library and Hugging Face Transformers library to fine-tune the Text-to-Text Transfer Transformer (T5) ([Raffel et al., 2020](https://arxiv.org/abs/1910.10683)) model in the form of multi-task learning for clinical negation detection and clinical semantic textual similarity (STS) tasks. We will also investigate the different freezing strategies (freeze encoder or decoder during fine-tuning). 
 
 ### Tools and Model
 
-The tools we will use are Pytorch 1.8.1, Hugging Face Transformers 4.4.2 and a pre-trained T5-base model. Pytorch is a general-purpose Python library for deep learning that can be used to build and train a variety of different deep learning models. The version of Pytorch that we will use in this tutorial is 1.8.1. Transformers is a Python library from Hugging Face that implements various transformer-based state-of-art natural language processing models. The version we will be using in this tutorial is 4.4.2.
+The tools we will use are Pytorch 1.8.1, [Hugging Face Transformers](https://github.com/huggingface/transformers) 4.4.2 and a pre-trained T5-base model. [Pytorch](https://pytorch.org/) is a Python library for deep learning that can be used to build and train a variety of different deep learning models. The version of Pytorch that we will use in this tutorial is 1.8.1. Transformers is a Python library from Hugging Face that implements various transformer-based state-of-art natural language processing models. The version we will be using in this tutorial is 4.4.2.
 
-The model we will build and train is the pre-trained T5 model from Raffel et al., 2020. The T5 model is a transformer-based sequence-to-sequence model (generative model). It is composed of a transformer-based encoder and a transformer-based decoder. Its input and output are both a sequence of words respectively. Encoder encodes the input sequence into some representations, and then decoder will decode these representations into the output sequence. The T5 model has been pre-trained on a large corpus of unlabeled text and has been widely applied to tasks such as machine translation and text summarization. It has achieved state-of-art performance on many natural language processing tasks. By using the T5 model, we aim to transfer the knowledge it learns from pre-training on a large number of general domains to our clinical negation detection and STS tasks. Then, we use multi-task learning to further improve the model's performance on both tasks. Raffel et al. 2020 provide T5 models of different sizes (number of parameters). In this tutorial, we will use the T5-base implementation from the Hugging Face Transformer library.
+The model we will build and train is the pre-trained T5 model. The T5 model is a transformer-based sequence-to-sequence model (generative model). It is composed of a transformer-based encoder and a transformer-based decoder. Its input and output are both a sequence of words respectively. Encoder encodes the input sequence into some representations, and then decoder will decode these representations into the output sequence. The T5 model has been pre-trained on a large corpus of unlabeled text and has been widely applied to tasks such as machine translation and text summarization. It has achieved state-of-art performance on many natural language processing tasks. By using the T5 model, we aim to transfer the knowledge it learns from pre-training on a large amount of general domain data to our clinical negation detection and STS tasks. We will use multi-task learning to further improve the model's performance on both tasks. In this tutorial, we will use the T5-base implementation from the Hugging Face Transformers library.
 
 ### Data and Tasks
 
@@ -53,7 +52,7 @@ Similarity Score: 0
 
 
 
-The data in both tasks are from the clinical institution's electronic medical record (EMR). They are all publicly available research data sets, but access to them requires approval and signing the data use agreements (UDA). They can be obtained through [DBMI Data Portal](https://portal.dbmi.hms.harvard.edu/) and their corresponding share tasks. For negation detection, we will use the development set in the share task data and divide it into a training set and a test set at a ratio of 80%:20%. For clinical STS, we will use the same data split as in share tasks. The models will be trained and tuned on the training set (the training set will be further split into a training set and a development set for each task), and tested on the test set to get the final performance. In the negation detection task, the F1 score will be used as the main evaluation metric. At the same time, precision and recall scores will also be reported. In clinical STS, Pearson correlation coefficient will be used as the main evaluation metric. The size and evaluation metrics of these two data sets are shown in the following table.
+The data in both tasks are from the clinical institution's electronic medical record (EMR). They are all publicly available research data sets, but access to them requires approval and signing the data use agreements (UDA). They can be obtained through [DBMI Data Portal](https://portal.dbmi.hms.harvard.edu/) and their corresponding share tasks. For negation detection, we will use the development set in the share task data and divide it into a training set and a test set at a ratio of 80% : 20%​. For clinical STS, we will use the same data split as in the share task. The models will be trained and tuned on the training set (the training set will be further split into a training set and a development set for each task), and tested on the test set to get the final performance. In the negation detection task, the F1 score will be used as the main evaluation metric. At the same time, precision and recall scores will also be reported. In clinical STS, Pearson correlation coefficient will be used as the main evaluation metric. The size and evaluation metrics of these two data sets are shown in the following table.
 
 | Task               | Train Size | Test Size | Metric                          |
 | :----------------- | ---------- | --------- | ------------------------------- |
@@ -62,13 +61,13 @@ The data in both tasks are from the clinical institution's electronic medical re
 
 ### Methods
 
-We will fine-tune the T5 models and experiment with the following freezing strategy.
+We will fine-tune the T5-base model and experiment with the following freezing strategy (MT is multi-task learning and FT is fine-tuning).
 
-- MT (freeze encoder) + FT (freeze decoder): First freeze encoder on two tasks for multi-task learning to fine tune the decoder. Then freeze the decoder and fine tune the encoder on two tasks separately.
-- MT (freeze decoder) + FT (freeze encoder): First freeze decoder on two tasks for multi-task learning to fine tune the encoder. Then freeze the encoder and fine tune the decoder on two tasks separately.
+- MT (freeze encoder) + FT (freeze decoder): First freeze the encoder for multi-task learning on both tasks to fine tune the decoder. Then freeze the decoder and fine tune the encoder on two tasks separately.
+- MT (freeze decoder) + FT (freeze encoder): First freeze decoder for multi-task learning on two tasks to fine tune the encoder. Then freeze the encoder and fine tune the decoder on two tasks separately.
 - MT + FT: Perform multi-task learning on two tasks to fine-tune the entire model. Then fine-tune the entire model on both tasks separately.
-- MT only: Only perform multi-task learning for both tasks and do not fine-tune for a single task.
-- FT only (baseline models): We will compare the performance of the above four kinds of models with the performance of the T5 model, which is only fine-tuned for a single task without any multi-task learning. 
+- MT only: Only perform multi-task learning for both tasks and do not fine-tune for single tasks.
+- FT only (baseline models): We will compare the performance of the above four kinds of models with the performance of the T5 model, which is only fine-tuned for the single tasks without any multi-task learning. 
 
 In total, we will train 9 models.
 
@@ -76,7 +75,7 @@ In total, we will train 9 models.
 
 ### Tools Installation 
 
-The OS environment I am using is `Linux Ubuntu 20.04.2` and the version of my Python is `3.8.5`. All the commands below are executed from terminal (command line).
+The OS environment I am using is `Linux Ubuntu 20.04.2` and the version of my Python is `3.8`.  The following installation commands need to be executed at the command line.
 
 **PIP**
 
@@ -118,6 +117,9 @@ python3.8 -m pip install scikit_learn==0.24.2
 
 # Install sentencepiece for T5 tokenizer
 python3.8 -m pip install sentencepiece==0.1.95
+
+# Install scipy
+python3.8 -m pip install scipy==1.6.3
 ```
 
 ### Project Structure
@@ -149,17 +151,20 @@ The raw text data for the Negation task are the following 4 text files in `tsv` 
 - `test.tsv`：It is the test data of negation task, which has the same format as `train.tsv`.
 - `test_labels.tsv`：It is the labels of the test data of the negation task in the same format as `train_labels.tsv`.
 
-Let's write a Python class for reading in the raw text data of the negation task.
+Let's write a Python class for reading in the raw text data of the negation task and save it in `src/data/negation_data_provider.py`.
 
 ```python
 class DataProviderNegation(object):
 
     def __init__(self, corpus_path, label_path=None) -> None:
+        # The path to train.tsv or test.tsv
         self.corpus_path = corpus_path
+        # The path to train_labels.tsv or test_labels.tsv
         self.label_path = label_path
 
     @staticmethod
     def load_text_file(path):
+        """Read the tsv file"""
         with open(path, 'r') as f:
             lines = f.readlines()
             lines = [i.replace('\n', '') for i in lines]
@@ -189,9 +194,9 @@ The data for the Clinical STS task is stored in the following files.
 
 - `clinicalSTS2019.train.txt`: it is the training data for the clinical STS task, where each row is a training example (a sentence pair) and the corresponding label (similarity score of the sentence pair): `sentence_a \t sentence_b \t similarity score \n`.
 - `clinicalSTS2019.test.txt`: It is the test data for the clinical STS task, where each row contains only one sentence pair: `sentence_a \t sentence_b \n`
-- `clinicalSTS2019.test.gs.sim.txt`: it is the labels of the test data of the clinical STS task, where each row is the similarity score of the corresponding sentence pair.
+- `clinicalSTS2019.test.gs.sim.txt`: it is the labels (similarity scores) of the test data of the clinical STS task, where each row is the similarity score of the corresponding sentence pair.
 
-Let's write a Python class for reading in the raw text data of the clinical STS task.
+Let's write a Python class for reading in the raw text data of the clinical STS task and save it in `src/data/sts_data_provider.py`.
 
 ```python
 class STSDataProvider:
@@ -305,15 +310,13 @@ from src.data.sts_data_provider import STSDataProvider
 from src.utils import negation_performance, sts_performance
 ```
 
-
-
 **Step 2**: Set the command line arguments that we will use and their default values and data types. The arguments we need to set in this section are:
 
-- Paths to raw text data for different tasks: (all arguments with `corpus_path` and `label_path` as suffixes)
-- The path to the directory used to save the output: `output_path`
-- Local path or name of the model: `model_name`, `tokenizer_name`
-- Hyperparameters of the T5 model: arguments that are labeled as Training arguments
-- Some other arguments that are used to control the behavior of our code: the arguments that are labeled as MISC
+- Paths to raw text data for different tasks: all arguments with `corpus_path` and `label_path` as suffixes.
+- The path to the directory used to save the output: `output_path`.
+- Local path or name of the model: `model_name`, `tokenizer_name`.
+- Hyperparameters of the T5 model: arguments that are labeled as Training arguments.
+- Some other arguments that are used to control the behavior of our code: the arguments that are labeled as MISC.
 
 ```python
 parser = argparse.ArgumentParser()
@@ -356,9 +359,7 @@ parser.add_argument('--learning_rate', type=float, default=0.001)
 parser.add_argument('--num_beams', type=int, default=3)
 ```
 
-
-
-**Step 3**: We will use Hugging Face's `Seq2SeqTrainer` API to train and test our model. It accepts passed in data in the form of `torch.utils.data.dataset.Dataset`. So we need to implement a [Pytorch map-style dataset class](https://pytorch.org/docs/stable/data.html#map-style-datasets) for storing our training and testing data, and it can be index (implement `__getitem__()`  and `__len()__` protocols).
+**Step 3**: We will use Hugging Face's `Seq2SeqTrainer` API to train and test our model. It accepts passed in data in the form of `torch.utils.data.dataset.Dataset`. So we need to implement a [Pytorch map-style dataset object](https://pytorch.org/docs/stable/data.html#map-style-datasets) for storing our training and test data, and it can be indexed (implement `__getitem__()`  and `__len()__` protocols).
 
 ```python
 class T5Dataset(Dataset):
@@ -368,6 +369,7 @@ class T5Dataset(Dataset):
                  max_target_length: int,
                  examples: List[str],
                  labels: List[str] = None):
+        # T5 tokenizer
         self.tokenizer = pre_trained_tokenizer
         self.max_source_length = max_source_length
         self.max_target_length = max_target_length
@@ -404,9 +406,7 @@ class T5Dataset(Dataset):
         return len(self.examples)
 ```
 
-
-
-**Step 4**: We need to parse the command line arguments and update our output_path arguments based on the current time. Since we may need to run the model with the same configuration multiple times, we want to store them in a directory named after the date for future use.
+**Step 4**: We will parse the command line arguments and update our output_path arguments based on the current time. Since we may need to run the model with the same configuration multiple times, we want to store them in a directory named after the date for future use.
 
 ```python
 # Parse the command line arguments.
@@ -417,8 +417,6 @@ args.output_path = os.path.join(args.output_path, datetime.now().strftime('%Y-%m
 os.makedirs(args.output_path, exist_ok=True)
 ```
 
-
-
 **Step 5**: Probe the GPUs available in the current machine to make sure our code is able to see the GPUs.
 
 ```python
@@ -427,8 +425,6 @@ print("-" * 80)
 args.num_gpus = torch.cuda.device_count()
 print("Number of GPUs = {}".format(args.num_gpus))
 ```
-
-
 
 **Step 6**: Load the model stored locally or via the Hugging Face model hub with the given model's local path or model name.
 
@@ -440,9 +436,7 @@ tokenizer = T5Tokenizer.from_pretrained(args.tokenizer_name, use_fast=True)
 model = T5ForConditionalGeneration.from_pretrained(args.model_name)
 ```
 
-
-
-**Step 7**: Based on the input arguments to determine whether the encoder or decoder of the T5 model needs to be frozen (without updating the values of the parameters during fine-tuning). After freezing, we need to print out the total parameters and the trainable parameters to ensure that our code is successfully freezing the part we want to freeze.
+**Step 7**: Based on the input arguments to determine whether the encoder or decoder of the T5 model needs to be frozen (without updating the values of the parameters during fine-tuning). After freezing, we need to print out the total number of parameters and the total number of trainable parameters to ensure that our code is successfully freezing the part we want to freeze.
 
 ```python
 # Freeze the model
@@ -462,8 +456,6 @@ total_train_params = sum(p.numel() for p in model.parameters() if p.requires_gra
 print(f"Total number of parameters = {total_params / 10 ** 7:.1f} M")
 print(f"Total number of trainable parameters = {total_train_params / 10 ** 7:.1f} M")
 ```
-
-
 
 **Step 8**: Load the data of the negation task and do the following processing works based on the convention of the T5 model input and output formats.
 
@@ -488,8 +480,6 @@ train_negation_examples = ['negation detection: ' + i for i in train_negation_ex
 test_negation_examples = ['negation detection: ' + i for i in test_negation_examples]
 ```
 
-
-
 **Step 9**: Load the clinical STS data and convert the input to `clinical sts: sentence1: {words in sentence 1} sentence2: {words in sentence 2}` based on the convention of the T5 model input format.
 
 ```python
@@ -509,9 +499,7 @@ for a, b in zip(test_sts_examples_a, test_sts_examples_b):
 test_sts_examples.append(f"clinical sts: sentence1: {a} sentence2: {b}")
 ```
 
-
-
-**Step 10**: Split the training dataset of negation task and clinical STS task into a training set and a development set in the ratio of 8:2. We will use the development set to tune the hyperparameters. Specifically, in this tutorial, we will only tune the number of training epochs.
+**Step 10**: Split the training dataset of negation task and clinical STS task into a training set and a development set in the ratio of 80% : 20%. We will use the development set to tune the hyperparameters. Specifically, in this tutorial, we will only tune the number of training epochs.
 
 ```python
 # Split the training sets into train and test use 80% and 20% ratio
@@ -537,13 +525,11 @@ print(f"Number of STS train examples = {len(train_sts_scores)}")
 print(f"Number of STS test examples = {len(test_sts_scores)}")
 ```
 
-
-
 **Step 11**: Build the final training and development sets for fine-tuning the T5 model based on the arguments of the common line. Here we have three options:
 
 1. Only the training and development set data of the negation task are used.
 2. Only the training and development set data from the clinical STS task are used.
-3. The training and development sets of both tasks are combined together to obtain the final training and development sets.
+3. The training and development sets of both tasks are combined together to obtain the final training and development sets (multi-task learning).
 
 ```python
 final_train_examples = []
@@ -569,8 +555,6 @@ elif args.tasks_to_train == "all":
 else:
 	raise ValueError("The task_to_train arg have to be specified: {all, negation, sts}")
 ```
-
-
 
 **Step 12**: Use the `T5Dataset` class we implemented in step 3 to build training, development and test datasets.
 
@@ -600,9 +584,7 @@ sts_test_dataset = T5Dataset(pre_trained_tokenizer=tokenizer,
                              max_target_length=args.max_target_length)
 ```
 
- 
-
-**Step 13:** Initialize the `Seq2SeqTrainingArguments` and `Seq2SeqTrainer` objects from Hugging Face Transformers. We will use the `Seq2SeqTrainer` API to fine tune the T5 model. The `Seq2SeqTrainingArguments` is used to store the parameters that will be used when training and testing the model. Here we will use the `EarlyStoppingCallback` to tune our optimal training epochs on the development set. The basic idea of `EarlyStoppingCallback` is to test the performance of the model on the development set after each training epoch ( here the value of the loss function is calculated), and if the model does not perform as well as the current best for 3 consecutive epochs, then stop training and return the best model.
+**Step 13:** Initialize the `Seq2SeqTrainingArguments` and `Seq2SeqTrainer` objects from Hugging Face Transformers. We will use the `Seq2SeqTrainer` API to fine tune the T5 model. The `Seq2SeqTrainingArguments` is used to store the parameters that will be used when training and testing the model. Here we will also use the `EarlyStoppingCallback` to tune our optimal training epochs on the development set. The basic idea of `EarlyStoppingCallback` is to test the performance of the model on the development set after each training epoch ( here the value of the loss function is calculated), and if the model does not perform as well as the current best for 3 consecutive epochs, then stop training and return the best model.
 
 ```python
 # Setup the trainer
@@ -630,8 +612,6 @@ trainer = Seq2SeqTrainer(model=model,
 
 ```
 
-
-
 **Step 14**: Print out some key information to make sure our settings are as expected, and then start training. After the training is done, save the model to `output_path`.
 
 ```python
@@ -651,8 +631,6 @@ if eval(args.do_train):
     trainer.model.save_pretrained(args.output_path)
     tokenizer.save_pretrained(args.output_path)
 ```
-
-
 
 **Step 15**: Test the final performance of the model on the test set of negation. First, we will use the trained model to do inference on the test set, and decode the results into string format. Finally, we will do the following processing on the predicted labels to get the final performance.
 
@@ -688,9 +666,7 @@ if args.tasks_to_eval == "negation" or args.tasks_to_eval == "all":
                                labels=test_negation_label_ids))
 ```
 
-
-
-Step 16: Test the final performance of the model on the test set of clinical STS. As above, we will also use the trained model to do inference on the test set, and decode the results into string format. Finally, all the predictions are converted to float data type, or set to 0 if they cannot be converted.
+**Step 16**: Test the final performance of the model on the test set of clinical STS. As above, we will also use the trained model to do inference on the test set, and decode the results into string format. Finally, all the predictions are converted to float data type, or set to 0 if they cannot be converted.
 
 ```python
 if args.tasks_to_eval == "sts" or args.tasks_to_eval == "all":
@@ -752,14 +728,9 @@ python3.8 /path/to/run_t5_model.py \
 
 #### Clinical STS FT
 
-```bash
-# Set the python PATH
-export  PYTHONPATH=/path/to/technical-tutorial-xinsu626:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src/data:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src/experiments:${PYTHONPATH}
+We use the following commands to directly fine-tune T5 model on clinical STS training set and test on test set.
 
-# Run
+```bash
 python3.8 /path/to/run_t5_model.py \
 --negation_train_corpus_path /path/to/negation-data/train.tsv \
 --negation_train_label_path /path/to/train_labels.tsv \
@@ -779,13 +750,7 @@ python3.8 /path/to/run_t5_model.py \
 #### MT (freeze encoder) + FT (freeze decoder)
 
  ```bash
-# Set the python PATH
-export  PYTHONPATH=/path/to/technical-tutorial-xinsu626:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src/data:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src/experiments:${PYTHONPATH}
-
-# Freeze the encoder and do multi-task learning
+#Do multi-task learning: freeze the encoder and do multi-task learning
 python3.8 /path/to/run_t5_model.py \
 --negation_train_corpus_path /path/to/negation-data/train.tsv \
 --negation_train_label_path /path/to/train_labels.tsv \
@@ -802,8 +767,8 @@ python3.8 /path/to/run_t5_model.py \
 --tasks_to_eval none
  ```
 
-```python
-# Unfreeze the encoder and freeze decoder and fine-tune on negation
+```bash
+# Then fine-tuning for negation: unfreeze the encoder and freeze decoder and fine-tune on negation
 python3.8 /path/to/run_t5_model.py \
 --negation_train_corpus_path /path/to/negation-data/train.tsv \
 --negation_train_label_path /path/to/train_labels.tsv \
@@ -821,7 +786,7 @@ python3.8 /path/to/run_t5_model.py \
 ```
 
 ```bash
-# Unfreeze the encoder and freeze decoder and fine-tune on clinical sts
+# Then fine-tuning for STS:unfreeze the encoder and freeze decoder and fine-tune on clinical sts
 python3.8 /path/to/run_t5_model.py \
 --negation_train_corpus_path /path/to/negation-data/train.tsv \
 --negation_train_label_path /path/to/train_labels.tsv \
@@ -841,13 +806,7 @@ python3.8 /path/to/run_t5_model.py \
 #### MT (freeze decoder) + FT (freeze encoder)
 
 ```bash
-# Set the python PATH
-export  PYTHONPATH=/path/to/technical-tutorial-xinsu626:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src/data:${PYTHONPATH}
-export PYTHONPATH=/path/to/technical-tutorial-xinsu626/src/experiments:${PYTHONPATH}
-
-# Freeze the encoder and do multi-task learning
+# Multi-task learning: freeze the encoder and do multi-task learning
 python3.8 /path/to/run_t5_model.py \
 --negation_train_corpus_path /path/to/negation-data/train.tsv \
 --negation_train_label_path /path/to/train_labels.tsv \
@@ -865,7 +824,7 @@ python3.8 /path/to/run_t5_model.py \
 ```
 
 ```bash
-# Unfreeze the decoder and freeze encoder and fine-tune on negation
+# Then fine-tuning for negation: unfreeze the decoder and freeze encoder and fine-tune on negation
 python3.8 /path/to/run_t5_model.py \
 --negation_train_corpus_path /path/to/negation-data/train.tsv \
 --negation_train_label_path /path/to/train_labels.tsv \
@@ -883,7 +842,7 @@ python3.8 /path/to/run_t5_model.py \
 ```
 
 ```bash
-# Unfreeze the decoder and freeze encoder and fine-tune on sts
+# Then fine-tuning of STS: unfreeze the decoder and freeze encoder and fine-tune on sts
 python3.8 /path/to/run_t5_model.py \
 --negation_train_corpus_path /path/to/negation-data/train.tsv \
 --negation_train_label_path /path/to/train_labels.tsv \
@@ -902,7 +861,8 @@ python3.8 /path/to/run_t5_model.py \
 
 #### MT
 
-```
+```bash
+# Multi-task learning without freezing
 python3.8 /path/to/run_t5_model.py \
 --negation_train_corpus_path /path/to/negation-data/train.tsv \
 --negation_train_label_path /path/to/train_labels.tsv \
@@ -959,7 +919,7 @@ python3.8 /path/to/run_t5_model.py \
 
 # Results
 
-I summarized the results of training and testing the above model on my machine in the following table (FT is fine-tuning; MT is multi-task learning).
+I summarized the results of training and testing the above model on my machine in the following table (FT is fine-tuning and MT is multi-task learning).
 
 ### Negation
 
@@ -985,7 +945,7 @@ As we can see, the best-performing strategy on both tasks is MT (freeze decoder)
 
 # Using Containerized Code
 
-All the code in this tutorial is containerized by Docker (The tutorial for installing docker can be found [here](https://docs.docker.com/engine/install/ubuntu/)). To replicate the experiments, one can pull a docker image from the docker hub and train the model in the container by connecting to the docker's interactive session. Below I will provide an example of how to train the STS baseline model using this docker image. One can also reproduce other models based on this template.
+All the code in this tutorial is containerized using [Docker](https://www.docker.com/) (The tutorial for installing docker can be found [here](https://docs.docker.com/engine/install/ubuntu/)). To replicate the experiments, you can pull a docker image from my docker hub and train the model in the container by connecting to the docker's interactive session. Below I will provide an example of how to train the STS baseline model using this docker image. You can also reproduce other models based on this template.
 
 Since we will use GPUs to train the models, we first need to install the Nvidia docker toolkit so that we can use the GPUs on the host machine inside the container. This installation command is from [Nvidia](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#setting-up-nvidia-container-toolkit).
 
@@ -1043,4 +1003,8 @@ python3.8 /technical-tutorial-xinsu626/src/experiments/run_t5_model.py \
 --tasks_to_train sts \
 --tasks_to_eval sts
 ```
+
+# References
+
+Colin  Raffel,  Noam  Shazeer,  Adam  Roberts,  Katherine  Lee,  Sharan  Narang,  Michael  Matena,  Yanqi Zhou,  Wei  Li,  and  Peter  J.  Liu.  2020.   Exploring the limits of transfer learning with a unified text-to-text transformer. Journal of Machine Learning Re-search, 21(140):1–67.
 
